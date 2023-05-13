@@ -42,16 +42,31 @@ def gen_qp(nx, ns, ny):
 	return Q, q, A, b, G, h, x, s, z, y 
 
 
+
+def check_kkt_conditions(Q,q,A,b,G,h,x,s,z,y):
+	r1 = Q @ x + q + A.T @ y + G.T @ z 
+	r2 = s * z 
+	r3 = G @ x + s - h 
+	r4 = A @ x - b
+
+	assert jnp.linalg.norm(r1, ord = jnp.inf) <= 1e-2
+	assert jnp.linalg.norm(r2, ord = jnp.inf) <= 1e-2
+	assert jnp.linalg.norm(r3, ord = jnp.inf) <= 1e-2
+
+	if (len(b) > 0):
+		assert jnp.linalg.norm(r4, ord = jnp.inf) <= 1e-2
+
 def test_qp_solver():
 	assert 4 == 4
 
 
 	np.random.seed(1)
 
+	# test 1000 normal QP's 
 	nx = 15
 	ns = 10
 	nz = ns 
-	ny = 3 
+	ny = 3
 
 	for i in range(1000):
 		Q, q, A, b, G, h, x_true, s_true, z_true, y_true = gen_qp(nx, ns, ny)
@@ -63,3 +78,25 @@ def test_qp_solver():
 		assert iters <= 6 # this is much stricter than the continuation criteria
 		assert duality_gap <= 1e-4 
 		assert ineq_res <= 1e-4
+
+		check_kkt_conditions(Q,q,A,b,G,h,x,s,z,y)
+		
+
+	# test 1000 inequality-only QP's 
+	nx = 15
+	ns = 10
+	nz = ns 
+	ny = 0
+
+	for i in range(1000):
+		Q, q, A, b, G, h, x_true, s_true, z_true, y_true = gen_qp(nx, ns, ny)
+		x,s,z,y,iters = qpax.pdip.solve_qp(Q,q,A,b,G,h)
+
+		duality_gap = s.dot(z)/len(s)
+		ineq_res = jnp.linalg.norm(G @ x + s - h, ord = jnp.inf)
+
+		assert iters <= 10 # this is much stricter than the continuation criteria
+		assert duality_gap <= 1e-4 
+		assert ineq_res <= 1e-4
+
+		check_kkt_conditions(Q,q,A,b,G,h,x,s,z,y)
