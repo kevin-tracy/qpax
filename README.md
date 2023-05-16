@@ -31,6 +31,7 @@ $ python setup.py install
 
 ## Usage
 
+### Solving a QP 
 We can solve QP's with qpax in a way that plays nice with JAX's `jit` and `vmap`:
 ```python 
 ipmort qpax
@@ -38,6 +39,54 @@ ipmort qpax
 # solve QP (this can be combined with jit or vmap)
 x, s, z, y, iters = qpax.solve_qp(Q, q, A, b, G, h)
 ```
+### Solving a batch of QP's 
+
+Here let's solve a batch of nonnegative least squares problems as QPs. This outlines two bits of functionality from `qpax`, first is the ability to solve QP's without any equality constraints, and second is the ability to `vmap` over a batch of QP's. 
+
+```python 
+import numpy as np
+import jax 
+import jax.numpy as jnp 
+from jax import jit, grad, vmap  
+import qpax 
+
+# non-negative least squares size
+n = 5   # size of x 
+m = 10  # rows in A 
+
+# create data for N_qps random qp's 
+N_qps = 100 
+
+# cost terms 
+Qs = jnp.zeros((N_qps, n, n))
+qs = jnp.zeros((N_qps, n))
+
+# these stay as zero when there are no equality constraints 
+As = jnp.zeros((N_qps, 0, n))
+bs = jnp.zeros((N_qps, 0))
+
+# inequality terms 
+Gs = jnp.zeros((N_qps, n, n))
+hs = jnp.zeros((N_qps, n))
+
+for i in range(N_qps):
+  A = jnp.array(np.random.randn(m,n))
+  b = jnp.array(np.random.randn(m))
+  
+  # least squares objective terms 
+  Qs = Qs.at[i].set(A.T @ A)
+  qs = qs.at[i].set(-A.T @ b)
+  
+  # nonnegative constraint
+  Gs = Gs.at[i].set(-jnp.eye(n))
+
+# vmap over this 
+batch_qp = jit(vmap(qpax.solve_qp_x, in_axes = (0,0,0,0,0,0)))
+
+xs = batch_qp(Qs, qs, As, bs, Gs, hs)
+```
+
+### Differentiating a QP 
 
 Alternatively, if we are only looking to use the primal variable `x`, we can use `solve_qp_x` and enable automatic differenation:
 
