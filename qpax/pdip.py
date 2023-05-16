@@ -1,12 +1,11 @@
-
+# pylint: disable=invalid-name
+"""test.
+here
+"""
 import jax 
 import jax.numpy as jnp
 import jax.scipy as jsp 
-# from jax import grad 
-# from jax import jacobian 
-from jax import jit 
-# from jax import vmap 
-# import numpy as np 
+from jax import jit
 # from jax import custom_vjp
 
 
@@ -14,7 +13,7 @@ def qr_solve(qr, rhs):
 	return jsp.linalg.solve_triangular(qr[1], qr[0].T @ rhs)
 
 
-def initialize(Q,q,A,b,G,h):
+def initialize(Q, q, A, b, G, h):
 	H = Q + G.T @ G 
 	L_H = jnp.linalg.qr(H)
 	F = A @ qr_solve(L_H, A.T)
@@ -161,9 +160,7 @@ def solve_qp(Q,q,A,b,G,h):
 
 	return x, s, z, y, iters
 
-@jit 
-def my_f(a):
-	return 4 * a 
+
 # nx = 15
 # ns = 10
 # nz = ns 
@@ -201,23 +198,23 @@ def my_f(a):
 # print("iters: ", iters)
 
 
-# @jax.custom_vjp
-# def solve_qp_x(Q,q,A,b,G,h):
-# 	return solve_qp(Q,q,A,b,G,h)[0]
+@jax.custom_vjp
+def solve_qp_x(Q,q,A,b,G,h):
+	return solve_qp(Q,q,A,b,G,h)[0]
 
-# @jit 
-# def solve_qp_forward(Q,q,A,b,G,h):
-# 	x,s,z,y,_ = solve_qp(Q,q,A,b,G,h)
-# 	return x, (Q,q,A,b,G,h,x,s,z,y)
+@jit 
+def solve_qp_forward(Q,q,A,b,G,h):
+	x,s,z,y,_ = solve_qp(Q,q,A,b,G,h)
+	return x, (Q,q,A,b,G,h,x,s,z,y)
 
-# @jit 
-# def solve_qp_backward(res, g):
-# 	Q,q,A,b,G,h,x,s,z,y = res 
-# 	return diff_qp(Q,q,A,b,G,h,x,s,z, y, g)
+@jit 
+def solve_qp_backward(res, g):
+	Q,q,A,b,G,h,x,s,z,y = res 
+	return diff_qp(Q,q,A,b,G,h,x,s,z, y, g)
 
-# solve_qp_x.defvjp(solve_qp_forward, solve_qp_backward)
+solve_qp_x.defvjp(solve_qp_forward, solve_qp_backward)
 
-# solve_qp_x = jit(solve_qp_x)
+solve_qp_x = jit(solve_qp_x)
 
 
 
