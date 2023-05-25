@@ -49,39 +49,40 @@ import jax
 import jax.numpy as jnp 
 from jax import jit, grad, vmap  
 import qpax 
+import timeit
 
-# non-negative least squares size
+"""
+solve batched non-negative least squares (nnls) problems
+ 
+min_x    |Fx - g|^2 
+st        x >= 0 
+"""
+
 n = 5   # size of x 
-m = 10  # rows in A 
+m = 10  # rows in F 
 
-# create data for N_qps random qp's 
-N_qps = 100 
+# create data for N_qps random nnls problems  
+N_qps = 10000 
+Fs = jnp.array(np.random.randn(N_qps, m, n))
+gs = jnp.array(np.random.randn(N_qps, m))
 
-# cost terms 
-Qs = jnp.zeros((N_qps, n, n))
-qs = jnp.zeros((N_qps, n))
+@jit
+def form_qp(F, g):
+  # convert the least squares to qp form 
+  n = F.shape[1]
+  Q = F.T @ F 
+  q = -F.T @ g 
+  G = -jnp.eye(n)
+  h = jnp.zeros(n)
+  A = jnp.zeros((0, n))
+  b = jnp.zeros(0)
+  return Q, q, A, b, G, h
 
-# these stay as zero when there are no equality constraints 
-As = jnp.zeros((N_qps, 0, n))
-bs = jnp.zeros((N_qps, 0))
+# create the qp's in a batched fashion 
+Qs, qs, As, bs, Gs, hs = vmap(form_qp, in_axes = (0, 0))(Fs, gs)
 
-# inequality terms 
-Gs = jnp.zeros((N_qps, n, n))
-hs = jnp.zeros((N_qps, n))
-
-for i in range(N_qps):
-  A = jnp.array(np.random.randn(m,n))
-  b = jnp.array(np.random.randn(m))
-  
-  # least squares objective terms 
-  Qs = Qs.at[i].set(A.T @ A)
-  qs = qs.at[i].set(-A.T @ b)
-  
-  # nonnegative constraint
-  Gs = Gs.at[i].set(-jnp.eye(n))
-
-# vmap over this 
-batch_qp = jit(vmap(qpax.solve_qp_x, in_axes = (0,0,0,0,0,0)))
+# create function for solving a batch of qp's 
+batch_qp = jit(vmap(qpax.solve_qp_x, in_axes = (0, 0, 0, 0, 0, 0)))
 
 xs = batch_qp(Qs, qs, As, bs, Gs, hs)
 ```
