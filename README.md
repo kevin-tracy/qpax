@@ -32,7 +32,7 @@ $ python setup.py install
 ## Usage
 
 ### Solving a QP 
-We can solve QP's with qpax in a way that plays nice with JAX's `jit` and `vmap`:
+We can solve QPs with qpax in a way that plays nice with JAX's `jit` and `vmap`:
 ```python 
 ipmort qpax
 
@@ -41,7 +41,7 @@ x, s, z, y, iters = qpax.solve_qp(Q, q, A, b, G, h)
 ```
 ### Solving a batch of QP's 
 
-Here let's solve a batch of nonnegative least squares problems as QPs. This outlines two bits of functionality from `qpax`, first is the ability to solve QP's without any equality constraints, and second is the ability to `vmap` over a batch of QP's. 
+Here let's solve a batch of nonnegative least squares problems as QPs. This outlines two bits of functionality from `qpax`, first is the ability to solve QPs without any equality constraints, and second is the ability to `vmap` over a batch of QPs. 
 
 ```python 
 import numpy as np
@@ -78,10 +78,10 @@ def form_qp(F, g):
   b = jnp.zeros(0)
   return Q, q, A, b, G, h
 
-# create the qp's in a batched fashion 
+# create the QPs in a batched fashion 
 Qs, qs, As, bs, Gs, hs = vmap(form_qp, in_axes = (0, 0))(Fs, gs)
 
-# create function for solving a batch of qp's 
+# create function for solving a batch of QPs 
 batch_qp = jit(vmap(qpax.solve_qp_x, in_axes = (0, 0, 0, 0, 0, 0)))
 
 xs = batch_qp(Qs, qs, As, bs, Gs, hs)
