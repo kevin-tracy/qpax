@@ -34,7 +34,7 @@ $ python setup.py install
 ### Solving a QP 
 We can solve QPs with qpax in a way that plays nice with JAX's `jit` and `vmap`:
 ```python 
-ipmort qpax
+import qpax
 
 # solve QP (this can be combined with jit or vmap)
 x, s, z, y, iters = qpax.solve_qp(Q, q, A, b, G, h)
