@@ -5,8 +5,6 @@ here
 import jax 
 import jax.numpy as jnp
 import jax.scipy as jsp 
-from jax import jit
-# from jax import custom_vjp
 
 
 def qr_solve(qr, rhs):
@@ -136,8 +134,8 @@ def pdip_step(inputs):
 
 	return (Q, q, A, b, G, h, x, s, z, y, pdip_iter + 1)
 
-@jit 
-def solve_qp(Q,q,A,b,G,h):
+
+def solve_qp(Q,q,A,b,G,h, max_iters=20, tol=1e-4):
 
 	Q = 0.5*(Q + Q.T)
 	
@@ -149,7 +147,7 @@ def solve_qp(Q,q,A,b,G,h):
 		duality_gap = s.dot(z)/len(s)
 		ineq_res = jnp.linalg.norm(G @ x + s - h, ord = jnp.inf)
 
-		return jnp.logical_and(pdip_iter < 20, jnp.logical_or(duality_gap > 1e-4, ineq_res > 1e-4))
+		return jnp.logical_and(pdip_iter < max_iters, jnp.logical_or(duality_gap > tol, ineq_res > tol))
 
 
 	init_inputs = (Q, q, A, b, G, h, x, s, z, y, 0)
@@ -161,154 +159,68 @@ def solve_qp(Q,q,A,b,G,h):
 	return x, s, z, y, iters
 
 
-# nx = 15
-# ns = 10
-# nz = ns 
-# ny = 3 
-# Q, q, A, b, G, h, x_true, s_true, z_true, y_true = gen_qp(nx, ns, ny)
 
+"""
+Here we define a function for solving the QP and returning the primal solution.
 
-# x,s,z,y,iters = solve_qp(Q,q,A,b,G,h)
+The implicit function theorem is used to comput these derivatives, and they 
+are efficiently combined in a backwards pass with the tricks from OptNet. 
 
-# print("solution x: ", x)
-
-# print(jnp.linalg.norm(x - x_true))
-# print(jnp.linalg.norm(s - s_true))
-
-
-# check = lambda var: print("variable type: ", var.dtype, "weak type: ", var.weak_type)
-
-# check(x)
-# check(s)
-# check(z)
-# check(y)
-
-
-# print(jnp.linalg.norm(z - z_true))
-# print(jnp.linalg.norm(y - y_true))
-# r1 = Q @ x + q + A.T @ y + G.T @ z 
-# r2 = s * z 
-# r3 = G @ x + s - h 
-# r4 = A @ x - b
-
-# print(jnp.linalg.norm(r1))
-# print(jnp.linalg.norm(r2))
-# print(jnp.linalg.norm(r3))
-# print(jnp.linalg.norm(r4))
-# print("iters: ", iters)
-
+https://arxiv.org/abs/1703.00443
+"""
 
 @jax.custom_vjp
-def solve_qp_x(Q,q,A,b,G,h):
+def solve_qp_primal(Q,q,A,b,G,h):
 	return solve_qp(Q,q,A,b,G,h)[0]
 
-@jit 
-def solve_qp_forward(Q,q,A,b,G,h):
+def solve_qp_primal_fwd(Q,q,A,b,G,h):
 	x,s,z,y,_ = solve_qp(Q,q,A,b,G,h)
 	return x, (Q,q,A,b,G,h,x,s,z,y)
 
-@jit 
-def solve_qp_backward(res, g):
+def solve_qp_primal_bwd(res, g):
 	Q,q,A,b,G,h,x,s,z,y = res 
 	return diff_qp(Q,q,A,b,G,h,x,s,z, y, g)
 
-solve_qp_x.defvjp(solve_qp_forward, solve_qp_backward)
-
-solve_qp_x = jit(solve_qp_x)
+solve_qp_primal.defvjp(solve_qp_primal_fwd, solve_qp_primal_bwd)
 
 
 
-# def my_f(Q,q,A,b,G,h):
-# 	x = solve_qp_x(Q,q,A,b,G,h) 
-# 	x_bar = jnp.ones(len(q))
-# 	return jnp.dot(x - x_bar, x-x_bar)
+"""
+Here we define a function for solving the QP and returning the objective value.
+
+Here we just take the gradient of the lagrangian at the primal-dual solution 
+wrt the problem matrices to get the gradients of the objective value wrt
+the problem matrices. This trick was shown in 2005 in 
+
+"A closed formula for local sensitivity analysis in mathematical programming"
+by Enrique Castillo et al 
+
+https://www.researchgate.net/publication/250794318_A_closed_formula_for_local_sensitivity_analysis_in_mathematical_programming
+"""
+
+@jax.custom_vjp
+def solve_qp_obj(Q,q,A,b,G,h):
+	x = solve_qp(Q,q,A,b,G,h)[0]
+	return 0.5*jnp.dot(x, Q @ x) + jnp.dot(q, x)
+
+def solve_qp_obj_fwd(Q,q,A,b,G,h):
+	x,s,z,y,_ = solve_qp(Q,q,A,b,G,h)
+	val = 0.5*jnp.dot(x, Q @ x) + jnp.dot(q, x)
+	res = (x, s, z, y)
+	return val, res
+
+def solve_qp_obj_bwd(res, g):
+	x,s,z,y = res 
+
+	gQ = 0.5* jnp.outer(x, x)
+	gc = x
+	gA = jnp.outer(y, x)
+	gb = -y
+	gG = jnp.outer(z, x)
+	gh = -z
+
+	return (gQ * g, gc * g, gA * g, gb * g, gG * g, gh * g)
 
 
-# def vectorize_mat(mat):
-# 	r,c = mat.shape 
-# 	return jnp.reshape(mat, (r*c,))
-
-# def materize_vec(vec, dims):
-# 	return jnp.reshape(vec, dims)
-
-
-# def finite_difference(func, x):
-# 	y = func(x)
-# 	dx = 1e-3
-# 	# finite diff of a vector 
-# 	if len(x.shape) == 1: 
-	
-# 		g = jnp.zeros(len(x))
-
-		
-
-# 		for i in range(len(x)):
-
-# 			x2 = x.at[i].set(x[i] + dx)
-# 			y2 = func(x2)
-
-# 			g = g.at[i].set((y2 - y)/dx)
-
-# 		return g 
-# 	else:
-
-# 		nr,nc = x.shape
-# 		nel = nr * nc 
-# 		g = jnp.zeros(nel)
-
-# 		for i in range(nel):
-
-# 			x2 = vectorize_mat(x)
-# 			x2 = x2.at[i].set(x2[i] + dx)
-
-# 			y2 = func(materize_vec(x2, (nr,nc)))
-
-# 			g = g.at[i].set((y2 - y)/dx)
-
-
-# 		return materize_vec(g, (nr, nc))
-
-
-
-# inputs = (Q,q,A,b,G,h)
-
-# print("here is my f: ", my_f(*inputs))
-
-# derivs = grad(my_f, argnums = (0,1,2,3,4,5))(*inputs)
-
-
-# def my_f_select(inputs, X, i):
-# 	# replace the ith element of inputs with X 
-# 	new_inputs = tuple(X if index == i else value for index, value in enumerate(inputs))
-# 	return my_f(*new_inputs)
-
-
-# def filter_out_small(A):
-# 	A = np.array(A)
-
-# 	threshold = 1e-3 
-
-# 	mask = np.abs(A) < threshold 
-
-# 	A[mask] = 0 
-
-# 	return jnp.array(A)
-
-# input_names = ("Q","q","A","b","G","h")
-# for i in range(6):
-# 	print("-------------input: ", input_names[i], "----------------")
-
-# 	lambda_f = lambda _X: my_f_select(inputs, _X, i)
-# 	fd_deriv = finite_difference(lambda_f, inputs[i])
-
-# 	assert fd_deriv.shape == derivs[i].shape
-
-# 	# print("deriv: ")
-# 	# print(filter_out_small(derivs[i]))
-# 	print("fd_deriv_norm: ")
-# 	print(jnp.linalg.norm(fd_deriv))
-# 	print("error_norm: ", jnp.linalg.norm(derivs[i] - fd_deriv))
-
-
-
+solve_qp_obj.defvjp(solve_qp_obj_fwd, solve_qp_obj_bwd)
 

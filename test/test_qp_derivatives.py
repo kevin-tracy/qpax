@@ -14,9 +14,9 @@ from misc_test_utils import generate_random_qp
 
 
 
-
+@jax.jit
 def my_f(Q,q,A,b,G,h):
-	x = qpax.solve_qp_x(Q,q,A,b,G,h) 
+	x = qpax.solve_qp_primal(Q,q,A,b,G,h) 
 	x_bar = jnp.ones(len(q))
 	return jnp.dot(x - x_bar, x-x_bar)
 
@@ -30,6 +30,7 @@ def my_f_select(inputs, X, i):
 def test_derivs():
 
 	np.random.seed(3)
+	
 	nx = 15
 	ns = 10
 	nz = ns 

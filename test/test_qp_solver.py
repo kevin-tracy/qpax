@@ -16,7 +16,6 @@ from misc_test_utils import check_kkt_conditions
 
 def test_qp_solver():
 
-
 	np.random.seed(1)
 
 	# test 1000 normal QP's 
@@ -25,9 +24,12 @@ def test_qp_solver():
 	nz = ns 
 	ny = 3
 
+	# jit compile first 
+	jit_solve_qp = jax.jit(qpax.solve_qp)
+
 	for i in range(1000):
 		Q, q, A, b, G, h, x_true, s_true, z_true, y_true = generate_random_qp(nx, ns, ny)
-		x,s,z,y,iters = qpax.solve_qp(Q,q,A,b,G,h)
+		x,s,z,y,iters = jit_solve_qp(Q,q,A,b,G,h)
 
 		duality_gap = s.dot(z)/len(s)
 		ineq_res = jnp.linalg.norm(G @ x + s - h, ord = jnp.inf)
@@ -47,7 +49,7 @@ def test_qp_solver():
 
 	for i in range(1000):
 		Q, q, A, b, G, h, x_true, s_true, z_true, y_true = generate_random_qp(nx, ns, ny)
-		x,s,z,y,iters = qpax.solve_qp(Q,q,A,b,G,h)
+		x,s,z,y,iters = jit_solve_qp(Q,q,A,b,G,h)
 
 		duality_gap = s.dot(z)/len(s)
 		ineq_res = jnp.linalg.norm(G @ x + s - h, ord = jnp.inf)
