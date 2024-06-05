@@ -2,11 +2,7 @@ import qpax
 
 import jax 
 import jax.numpy as jnp
-# import jax.scipy as jsp 
 from jax import grad 
-# from jax import jacobian 
-from jax import jit 
-# from jax import vmap 
 import numpy as np 
 
 from misc_test_utils import finite_difference
@@ -14,9 +10,9 @@ from misc_test_utils import generate_random_qp
 
 
 
-
+@jax.jit 
 def my_f(Q,q,A,b,G,h):
-	x = qpax.solve_qp_x(Q,q,A,b,G,h) 
+	x = qpax.solve_qp_primal(Q,q,A,b,G,h, target_kappa=1e-3) 
 	x_bar = jnp.ones(len(q))
 	return jnp.dot(x - x_bar, x-x_bar)
 
@@ -37,7 +33,7 @@ def test_derivs():
 	Q, q, A, b, G, h, x_true, s_true, z_true, y_true = generate_random_qp(nx, ns, ny)
 
 	inputs = (Q,q,A,b,G,h)
-	grad_my_f = jit(grad(my_f, argnums = (0,1,2,3,4,5)))
+	grad_my_f = jax.jit(grad(my_f, argnums = (0,1,2,3,4,5)))
 	derivs = grad_my_f(*inputs)
 
 	input_names = ("Q","q","A","b","G","h")

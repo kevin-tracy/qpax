@@ -33,18 +33,18 @@ def generate_random_qp(nx, ns, ny):
 	return Q, q, A, b, G, h, x, s, z, y 
 
 
-def check_kkt_conditions(Q,q,A,b,G,h,x,s,z,y):
+def check_kkt_conditions(Q,q,A,b,G,h,x,s,z,y, solver_tol=1e-3):
 	r1 = Q @ x + q + A.T @ y + G.T @ z 
 	r2 = s * z 
 	r3 = G @ x + s - h 
 	r4 = A @ x - b
 
-	assert jnp.linalg.norm(r1, ord = jnp.inf) <= 1e-2
-	assert jnp.linalg.norm(r2, ord = jnp.inf) <= 1e-2
-	assert jnp.linalg.norm(r3, ord = jnp.inf) <= 1e-2
+	assert jnp.linalg.norm(r1, ord = jnp.inf) <= solver_tol
+	assert jnp.linalg.norm(r2, ord = jnp.inf) <= solver_tol
+	assert jnp.linalg.norm(r3, ord = jnp.inf) <= solver_tol
 
 	if (len(b) > 0):
-		assert jnp.linalg.norm(r4, ord = jnp.inf) <= 1e-2
+		assert jnp.linalg.norm(r4, ord = jnp.inf) <= solver_tol
 
 
 def vectorize_mat(mat):
