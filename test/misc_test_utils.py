@@ -5,7 +5,6 @@ import numpy as np
 
 def generate_random_qp(nx, ns, ny):
 
-	nz = ns 
 
 	x = jnp.array(np.random.randn(nx))
 	Q = jnp.array(np.random.randn(nx,nx))
