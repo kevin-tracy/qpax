@@ -6,7 +6,7 @@ import jax
 import jax.numpy as jnp
 from qpax.pdip import *
 
-DEBUG_FLAG = False 
+DEBUG_FLAG = False
 
 def solve_init_elastic_ls(Q, q, G, h, penalty):
     ns = len(h)
@@ -18,7 +18,7 @@ def solve_init_elastic_ls(Q, q, G, h, penalty):
     x = qr_solve(L_H, r1 - .5 * G.T @ (r2 - r4))
     z2 = .5 * (G @ x + r2 - r4)
     z1 = r2 - z2
-    t = z1
+    t = -z1
     
     x_big = jnp.concatenate((x, t))
     z_big = jnp.concatenate((z1, z2))
@@ -54,7 +54,7 @@ def solve_elastic_kkt(s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
     a2 = s2 / z2
     w1 = r3 / z1 
     w2 = r4 / z2
-    p1 = r5 - r6 + w2 - w1 + a1 * r2 
+    p1 = r5 - r6 + w2 - w1 - a1 * r2 
     a3 = a1 + a2
 
     # one linear system solve 
@@ -62,10 +62,10 @@ def solve_elastic_kkt(s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
 
     # rest is easy 
     dz2 = (p1 + G @ dx) / a3
-    dz1 = r2 - dz2 
+    dz1 = -r2 - dz2 
     ds1 = (r3 - s1 * dz1) / z1  
     ds2 = (r4 - s2 * dz2) / z2
-    dt = r5 - ds1 
+    dt = ds1 - r5 
     
     return dx, dt, ds1, ds2, dz1, dz2 
 
@@ -77,11 +77,11 @@ def pdip_pc_step_elastic(inputs):
 
     # residuals 
     r1 = Q @ x + q + G.T @ z2 
-    r2 = z1 + z2 - penalty * jnp.ones(len(h))
+    r2 = -z1 - z2 + penalty * jnp.ones(len(h))
     r3 = s1 * z1 
     r4 = s2 * z2 
-    r5 = t + s1  
-    r6 = G @ x + t + s2 - h  
+    r5 = -t + s1  
+    r6 = G @ x - t + s2 - h  
 
     # check convergence 
     kkt_res = jnp.concatenate((r1, r2, r3, r4, r5, r6))
