@@ -48,7 +48,7 @@ def initialize_elastic(Q, q, G, h, penalty):
 
     return x, t, s1, s2, z1, z2
 
-def solve_elastic_kkt(s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
+def solve_elastic_kkt_affine(s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
     # solve main KKT linear systems 
     a1 = s1 / z1 
     a2 = s2 / z2
@@ -58,7 +58,31 @@ def solve_elastic_kkt(s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
     a3 = a1 + a2
 
     # one linear system solve 
-    dx = jnp.linalg.solve(Q + G.T @ (G.T * (1 / a3)).T, r1 - G.T @ (p1 / a3))
+    H = Q + G.T @ (G.T * (1 / a3)).T
+    L_H = jnp.linalg.qr(H)
+    dx = qr_solve(L_H, r1 - G.T @ (p1 / a3))
+
+    # rest is easy 
+    dz2 = (p1 + G @ dx) / a3
+    dz1 = -r2 - dz2 
+    ds1 = (r3 - s1 * dz1) / z1  
+    ds2 = (r4 - s2 * dz2) / z2
+    dt = ds1 - r5 
+    
+    return dx, dt, ds1, ds2, dz1, dz2, L_H
+
+def solve_elastic_kkt_cc(L_H, s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
+    # solve main KKT linear systems 
+    a1 = s1 / z1 
+    a2 = s2 / z2
+    w1 = r3 / z1 
+    w2 = r4 / z2
+    p1 = r5 - r6 + w2 - w1 - a1 * r2 
+    a3 = a1 + a2
+
+    # one linear system solve 
+    # dx = jnp.linalg.solve(Q + G.T @ (G.T * (1 / a3)).T, r1 - G.T @ (p1 / a3))
+    dx = qr_solve(L_H, r1 - G.T @ (p1 / a3))
 
     # rest is easy 
     dz2 = (p1 + G @ dx) / a3
@@ -88,7 +112,7 @@ def pdip_pc_step_elastic(inputs):
     converged = jnp.where(jnp.linalg.norm(kkt_res, ord=jnp.inf) < solver_tol, 1, 0)
 
     # affine step 
-    _, _, ds1_a, ds2_a, dz1_a, dz2_a = solve_elastic_kkt(s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
+    _, _, ds1_a, ds2_a, dz1_a, dz2_a, L_H = solve_elastic_kkt_affine(s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
 
     s = jnp.concatenate((s1, s2))
     z = jnp.concatenate((z1, z2))
@@ -101,7 +125,7 @@ def pdip_pc_step_elastic(inputs):
     r3 = r3 - (sigma * mu - (ds1_a * dz1_a))
     r4 = r4 - (sigma * mu - (ds2_a * dz2_a))
 
-    dx, dt, ds1, ds2, dz1, dz2 = solve_elastic_kkt(s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
+    dx, dt, ds1, ds2, dz1, dz2 = solve_elastic_kkt_cc(L_H, s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
 
     ds = jnp.concatenate((ds1, ds2))
     dz = jnp.concatenate((dz1, dz2))
@@ -201,7 +225,7 @@ def pdip_newton_step_elastic(inputs):
     converged = jnp.where(jnp.linalg.norm(kkt_res, ord=jnp.inf) < solver_tol, 1, 0)
 
     # affine step 
-    dx, dt, ds1, ds2, dz1, dz2 = solve_elastic_kkt(s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
+    dx, dt, ds1, ds2, dz1, dz2, _ = solve_elastic_kkt_affine(s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
 
     s = jnp.concatenate((s1, s2))
     z = jnp.concatenate((z1, z2))
@@ -300,7 +324,7 @@ def diff_qp_elastic(Q,q,G,h,
     ns = len(h)
     
     zns = jnp.zeros(ns)
-    dx, dt, ds1, ds2, dlam1, dlam2 = solve_elastic_kkt(s1, lam1, s2, lam2, Q, G, -dl_dz, zns, zns, zns, zns, zns)
+    dx, dt, ds1, ds2, dlam1, dlam2, _ = solve_elastic_kkt_affine(s1, lam1, s2, lam2, Q, G, -dl_dz, zns, zns, zns, zns, zns)
     
     # augment the sizes to make them big again 
     dz = jnp.concatenate((dx, dt))
