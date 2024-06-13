@@ -82,14 +82,14 @@ def form_qp(F, g):
 Qs, qs, As, bs, Gs, hs = vmap(form_qp, in_axes = (0, 0))(Fs, gs)
 
 # create function for solving a batch of QPs 
-batch_qp = jit(vmap(qpax.solve_qp_x, in_axes = (0, 0, 0, 0, 0, 0)))
+batch_qp = jit(vmap(qpax.solve_qp_primal, in_axes = (0, 0, 0, 0, 0, 0)))
 
 xs = batch_qp(Qs, qs, As, bs, Gs, hs)
 ```
 
 ### Differentiating a QP 
 
-Alternatively, if we are only looking to use the primal variable `x`, we can use `solve_qp_x` which enables automatic differenation:
+Alternatively, if we are only looking to use the primal variable `x`, we can use `solve_qp_primal` which enables automatic differenation:
 
 ```python
 import jax 
@@ -97,7 +97,7 @@ import jax.numpy as jnp
 import qpax 
 
 def loss(Q, q, A, b, G, h):
-    x = qpax.solve_qp_x(Q, q, A, b, G, h) 
+    x = qpax.solve_qp_primal(Q, q, A, b, G, h) 
     x_bar = jnp.ones(len(q))
     return jnp.dot(x - x_bar, x - x_bar)
   
