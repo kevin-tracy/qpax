@@ -180,9 +180,10 @@ def pdip_pc_step_debug(inputs):
 
 	# linesearch and update primal & dual vars 
 	alpha = 0.99*jnp.min(jnp.array([
-				ort_linesearch(s, ds),
-				ort_linesearch(z, dz) 
-				]))
+                1.0,
+                .99 * ort_linesearch(s, ds),
+                .99 * ort_linesearch(z, dz) 
+                ]))
 
 	x = x + alpha * dx 
 	s = s + alpha * ds 

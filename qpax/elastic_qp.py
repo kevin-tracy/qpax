@@ -131,13 +131,11 @@ def pdip_pc_step_elastic(inputs):
     dz = jnp.concatenate((dz1, dz2))
     
     # linesearch and update primal & dual vars 
-    alpha = jnp.min(jnp.array([
-        1.0,
-        0.99*jnp.min(jnp.array([
-                ort_linesearch(s, ds),
-                ort_linesearch(z, dz) 
+    alpha = 0.99*jnp.min(jnp.array([
+                1.0,
+                .99 * ort_linesearch(s, ds),
+                .99 * ort_linesearch(z, dz) 
                 ]))
-    ]))
 
     x = x + alpha * dx 
     t = t + alpha * dt 
@@ -233,13 +231,11 @@ def pdip_newton_step_elastic(inputs):
     dz = jnp.concatenate((dz1, dz2))
     
     # linesearch and update primal & dual vars 
-    alpha = jnp.min(jnp.array([
-        1.0,
-        0.99*jnp.min(jnp.array([
-                ort_linesearch(s, ds),
-                ort_linesearch(z, dz) 
+    alpha = 0.99*jnp.min(jnp.array([
+                1.0,
+                .99 * ort_linesearch(s, ds),
+                .99 * ort_linesearch(z, dz) 
                 ]))
-    ]))
 
     x = x + alpha * dx 
     t = t + alpha * dt 
