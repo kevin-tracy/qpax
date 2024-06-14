@@ -352,7 +352,6 @@ def diff_qp_elastic(Q,q,G,h,
 
 @jax.custom_vjp
 def solve_qp_elastic_primal(Q,q,G,h,penalty, solver_tol=1e-5, target_kappa=1e-3):
-    print("calling solve_qp_elastic_primal")
     # solve qp as normal and return primal solution (use any solver)
     x, t, s1, s2, z1, z2, converged, pdip_iter = solve_qp_elastic(
         Q,q,G,h, penalty, solver_tol=solver_tol)
@@ -364,8 +363,6 @@ these two functions are only called when we diff solve_qp_x
 """
 def solve_qp_elastic_primal_fwd(Q,q,G,h,penalty, solver_tol=1e-5, target_kappa=1e-3):
     # solve qp as normal and return primal solution (use any solver)
-
-    print("calling solve_qp_elastic_primal_fwd")
 
     x, t, s1, s2, z1, z2, converged1, pdip_iter1 = solve_qp_elastic(
         Q,q,G,h, penalty, solver_tol=solver_tol)
@@ -382,7 +379,6 @@ def solve_qp_elastic_primal_fwd(Q,q,G,h,penalty, solver_tol=1e-5, target_kappa=1
 
 
 def solve_qp_elastic_primal_bwd(res, input_grad):
-    print("calling solve_qp_elastic_primal_bwd")
 
     # unpack relaxed solution 
     Q,q,G,h,penalty,xr, tr, s1r, s2r, z1r, z2r = res 
