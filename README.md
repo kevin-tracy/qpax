@@ -39,7 +39,7 @@ We can solve QPs with qpax in a way that plays nice with JAX's `jit` and `vmap`:
 import qpax
 
 # solve QP (this can be combined with jit or vmap)
-x, s, z, y, iters = qpax.solve_qp(Q, q, A, b, G, h)
+x, s, z, y, converged, iters = qpax.solve_qp(Q, q, A, b, G, h)
 ```
 ### Solving a batch of QP's 
 
