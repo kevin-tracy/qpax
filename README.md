@@ -1,6 +1,8 @@
 # qpax
 Differentiable QP solver in [JAX](https://github.com/google/jax).
 
+[![Paper](http://img.shields.io/badge/arXiv-2207.00669-B31B1B.svg)](https://arxiv.org/abs/2406.11749)
+
 This package can be used for solving convex quadratic programs of the following form:
 
 $$
