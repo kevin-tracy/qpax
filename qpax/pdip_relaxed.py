@@ -1,11 +1,6 @@
-# pylint: disable=invalid-name
-"""test.
-here
-"""
-
 import jax
 import jax.numpy as jnp
-from qpax.pdip import *
+from qpax.pdip import factorize_kkt, solve_kkt_rhs, ort_linesearch
 
 
 def pdip_newton_step(inputs):

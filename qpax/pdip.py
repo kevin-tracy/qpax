@@ -1,12 +1,6 @@
-# pylint: disable=invalid-name
-"""test.
-here
-"""
-
 import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
-# from jax import custom_vjp
 
 
 def qr_solve(qr, rhs):
