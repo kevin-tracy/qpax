@@ -1,13 +1,12 @@
 import jax
 import jax.numpy as jnp
-from qpax.pdip import factorize_kkt, solve_kkt_rhs, ort_linesearch
+
+from qpax.pdip import factorize_kkt, ort_linesearch, solve_kkt_rhs
 
 
 def pdip_newton_step(inputs):
     # unpack inputs
-    Q, q, A, b, G, h, x, s, z, y, solver_tol, converged, pdip_iter, target_kappa = (
-        inputs
-    )
+    Q, q, A, b, G, h, x, s, z, y, solver_tol, converged, pdip_iter, target_kappa = inputs
 
     # residuals
     r1 = Q @ x + q + A.T @ y + G.T @ z
@@ -21,14 +20,10 @@ def pdip_newton_step(inputs):
 
     # affine step
     P_inv_vec, L_H, L_F = factorize_kkt(Q, G, A, s, z)
-    dx, ds, dz, dy = solve_kkt_rhs(
-        Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4
-    )
+    dx, ds, dz, dy = solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4)
 
     # linesearch and update primal & dual vars
-    alpha = 0.99 * jnp.min(
-        jnp.array([1.0, 0.99 * ort_linesearch(s, ds), 0.99 * ort_linesearch(z, dz)])
-    )
+    alpha = 0.99 * jnp.min(jnp.array([1.0, 0.99 * ort_linesearch(s, ds), 0.99 * ort_linesearch(z, dz)]))
 
     x = x + alpha * dx
     s = s + alpha * ds
@@ -95,9 +90,7 @@ def relax_qp(Q, q, A, b, G, h, x, s, z, y, solver_tol=1e-5, target_kappa=1e-5):
         target_kappa,
     )
 
-    outputs = jax.lax.while_loop(
-        relaxed_continuation_criteria, pdip_newton_step, init_inputs
-    )
+    outputs = jax.lax.while_loop(relaxed_continuation_criteria, pdip_newton_step, init_inputs)
 
     x_rlx, s_rlx, z_rlx, y_rlx = outputs[6:10]
     converged = outputs[11]

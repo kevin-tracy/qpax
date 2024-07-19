@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
-from qpax.pdip import solve_qp, factorize_kkt, solve_kkt_rhs
+
+from qpax.pdip import factorize_kkt, solve_kkt_rhs, solve_qp
 from qpax.pdip_relaxed import relax_qp
 
 

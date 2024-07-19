@@ -85,16 +85,12 @@ def pdip_pc_step(inputs):
 
     # affine step
     P_inv_vec, L_H, L_F = factorize_kkt(Q, G, A, s, z)
-    _, ds_a, dz_a, _ = solve_kkt_rhs(
-        Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4
-    )
+    _, ds_a, dz_a, _ = solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4)
 
     # change centering + correcting params
     sigma, mu = centering_params(s, z, ds_a, dz_a)
     r2 = r2 - (sigma * mu - (ds_a * dz_a))
-    dx, ds, dz, dy = solve_kkt_rhs(
-        Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4
-    )
+    dx, ds, dz, dy = solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4)
 
     # linesearch and update primal & dual vars
     alpha = 0.99 * jnp.min(jnp.array([ort_linesearch(s, ds), ort_linesearch(z, dz)]))
@@ -164,21 +160,15 @@ def pdip_pc_step_debug(inputs):
 
     # affine step
     P_inv_vec, L_H, L_F = factorize_kkt(Q, G, A, s, z)
-    _, ds_a, dz_a, _ = solve_kkt_rhs(
-        Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4
-    )
+    _, ds_a, dz_a, _ = solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4)
 
     # change centering + correcting params
     sigma, mu = centering_params(s, z, ds_a, dz_a)
     r2 = r2 - (sigma * mu - (ds_a * dz_a))
-    dx, ds, dz, dy = solve_kkt_rhs(
-        Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4
-    )
+    dx, ds, dz, dy = solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4)
 
     # linesearch and update primal & dual vars
-    alpha = 0.99 * jnp.min(
-        jnp.array([1.0, 0.99 * ort_linesearch(s, ds), 0.99 * ort_linesearch(z, dz)])
-    )
+    alpha = 0.99 * jnp.min(jnp.array([1.0, 0.99 * ort_linesearch(s, ds), 0.99 * ort_linesearch(z, dz)]))
 
     x = x + alpha * dx
     s = s + alpha * ds
@@ -229,9 +219,7 @@ def solve_qp_debug(Q, q, A, b, G, h, solver_tol=1e-3):
     print("iter      r1          r2         r3         r4        alpha")
     print("------------------------------------------------------")
 
-    outputs = while_loop_debug(
-        pc_continuation_criteria, pdip_pc_step_debug, init_inputs
-    )
+    outputs = while_loop_debug(pc_continuation_criteria, pdip_pc_step_debug, init_inputs)
 
     x, s, z, y = outputs[6:10]
     converged = outputs[11]

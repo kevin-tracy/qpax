@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
-from qpax.pdip import ort_linesearch, qr_solve, centering_params
+
+from qpax.pdip import centering_params, ort_linesearch, qr_solve
 
 DEBUG_FLAG = False
 
@@ -110,9 +111,7 @@ def pdip_pc_step_elastic(inputs):
     converged = jnp.where(jnp.linalg.norm(kkt_res, ord=jnp.inf) < solver_tol, 1, 0)
 
     # affine step
-    _, _, ds1_a, ds2_a, dz1_a, dz2_a, L_H = solve_elastic_kkt_affine(
-        s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6
-    )
+    _, _, ds1_a, ds2_a, dz1_a, dz2_a, L_H = solve_elastic_kkt_affine(s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
 
     s = jnp.concatenate((s1, s2))
     z = jnp.concatenate((z1, z2))
@@ -124,17 +123,13 @@ def pdip_pc_step_elastic(inputs):
     r3 = r3 - (sigma * mu - (ds1_a * dz1_a))
     r4 = r4 - (sigma * mu - (ds2_a * dz2_a))
 
-    dx, dt, ds1, ds2, dz1, dz2 = solve_elastic_kkt_cc(
-        L_H, s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6
-    )
+    dx, dt, ds1, ds2, dz1, dz2 = solve_elastic_kkt_cc(L_H, s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
 
     ds = jnp.concatenate((ds1, ds2))
     dz = jnp.concatenate((dz1, dz2))
 
     # linesearch and update primal & dual vars
-    alpha = 0.99 * jnp.min(
-        jnp.array([1.0, 0.99 * ort_linesearch(s, ds), 0.99 * ort_linesearch(z, dz)])
-    )
+    alpha = 0.99 * jnp.min(jnp.array([1.0, 0.99 * ort_linesearch(s, ds), 0.99 * ort_linesearch(z, dz)]))
 
     x = x + alpha * dx
     t = t + alpha * dt
@@ -216,20 +211,12 @@ def solve_qp_elastic(Q, q, G, h, penalty, solver_tol=1e-3):
     )
 
     if DEBUG_FLAG:
-        print(
-            "iter      r1          r2         r3         r4        r5        r6        alpha"
-        )
-        print(
-            "--------------------------------------------------------------------------------"
-        )
+        print("iter      r1          r2         r3         r4        r5        r6        alpha")
+        print("--------------------------------------------------------------------------------")
 
-        outputs = while_loop_debug(
-            pc_continuation_criteria, pdip_pc_step_elastic, init_inputs
-        )
+        outputs = while_loop_debug(pc_continuation_criteria, pdip_pc_step_elastic, init_inputs)
     else:
-        outputs = jax.lax.while_loop(
-            pc_continuation_criteria, pdip_pc_step_elastic, init_inputs
-        )
+        outputs = jax.lax.while_loop(pc_continuation_criteria, pdip_pc_step_elastic, init_inputs)
 
     x, t, s1, s2, z1, z2 = outputs[5:11]
     converged = outputs[12]
@@ -275,9 +262,7 @@ def pdip_newton_step_elastic(inputs):
     converged = jnp.where(jnp.linalg.norm(kkt_res, ord=jnp.inf) < solver_tol, 1, 0)
 
     # affine step
-    dx, dt, ds1, ds2, dz1, dz2, _ = solve_elastic_kkt_affine(
-        s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6
-    )
+    dx, dt, ds1, ds2, dz1, dz2, _ = solve_elastic_kkt_affine(s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
 
     s = jnp.concatenate((s1, s2))
     z = jnp.concatenate((z1, z2))
@@ -285,9 +270,7 @@ def pdip_newton_step_elastic(inputs):
     dz = jnp.concatenate((dz1, dz2))
 
     # linesearch and update primal & dual vars
-    alpha = 0.99 * jnp.min(
-        jnp.array([1.0, 0.99 * ort_linesearch(s, ds), 0.99 * ort_linesearch(z, dz)])
-    )
+    alpha = 0.99 * jnp.min(jnp.array([1.0, 0.99 * ort_linesearch(s, ds), 0.99 * ort_linesearch(z, dz)]))
 
     x = x + alpha * dx
     t = t + alpha * dt
@@ -330,9 +313,7 @@ def pdip_newton_step_elastic(inputs):
     )
 
 
-def relax_qp_elastic(
-    Q, q, G, h, penalty, x, t, s1, s2, z1, z2, solver_tol=1e-3, target_kappa=1e-3
-):
+def relax_qp_elastic(Q, q, G, h, penalty, x, t, s1, s2, z1, z2, solver_tol=1e-3, target_kappa=1e-3):
     # continuation criteria for normal predictor-corrector
     def pc_continuation_criteria(inputs):
         converged = inputs[12]
@@ -361,20 +342,12 @@ def relax_qp_elastic(
     )
 
     if DEBUG_FLAG:
-        print(
-            "iter      r1          r2         r3         r4        r5        r6        alpha"
-        )
-        print(
-            "--------------------------------------------------------------------------------"
-        )
+        print("iter      r1          r2         r3         r4        r5        r6        alpha")
+        print("--------------------------------------------------------------------------------")
 
-        outputs = while_loop_debug(
-            pc_continuation_criteria, pdip_newton_step_elastic, init_inputs
-        )
+        outputs = while_loop_debug(pc_continuation_criteria, pdip_newton_step_elastic, init_inputs)
     else:
-        outputs = jax.lax.while_loop(
-            pc_continuation_criteria, pdip_newton_step_elastic, init_inputs
-        )
+        outputs = jax.lax.while_loop(pc_continuation_criteria, pdip_newton_step_elastic, init_inputs)
 
     x_rlx, t_rlx, s1_rlx, s2_rlx, z1_rlx, z2_rlx = outputs[5:11]
     converged = outputs[12]
@@ -444,9 +417,7 @@ def diff_qp_elastic(Q, q, G, h, x, t, s1, s2, lam1, lam2, dl_dz):
 @jax.custom_vjp
 def solve_qp_elastic_primal(Q, q, G, h, penalty, solver_tol=1e-5, target_kappa=1e-3):
     # solve qp as normal and return primal solution (use any solver)
-    x, t, s1, s2, z1, z2, converged, pdip_iter = solve_qp_elastic(
-        Q, q, G, h, penalty, solver_tol=solver_tol
-    )
+    x, t, s1, s2, z1, z2, converged, pdip_iter = solve_qp_elastic(Q, q, G, h, penalty, solver_tol=solver_tol)
 
     return x
 
@@ -456,14 +427,10 @@ these two functions are only called when we diff solve_qp_x
 """
 
 
-def solve_qp_elastic_primal_fwd(
-    Q, q, G, h, penalty, solver_tol=1e-5, target_kappa=1e-3
-):
+def solve_qp_elastic_primal_fwd(Q, q, G, h, penalty, solver_tol=1e-5, target_kappa=1e-3):
     # solve qp as normal and return primal solution (use any solver)
 
-    x, t, s1, s2, z1, z2, converged1, pdip_iter1 = solve_qp_elastic(
-        Q, q, G, h, penalty, solver_tol=solver_tol
-    )
+    x, t, s1, s2, z1, z2, converged1, pdip_iter1 = solve_qp_elastic(Q, q, G, h, penalty, solver_tol=solver_tol)
 
     # relax this solution by taking vanilla Newton steps on relaxed KKT
     xr, tr, s1r, s2r, z1r, z2r, converged2, pdip_iter2 = relax_qp_elastic(
@@ -491,9 +458,7 @@ def solve_qp_elastic_primal_bwd(res, input_grad):
     Q, q, G, h, penalty, xr, tr, s1r, s2r, z1r, z2r = res
 
     # return all the normal derivatives, then None's for penalty and kwargs
-    dl_dQ, dl_dq, dl_dG, dl_dh = diff_qp_elastic(
-        Q, q, G, h, xr, tr, s1r, s2r, z1r, z2r, input_grad
-    )
+    dl_dQ, dl_dq, dl_dG, dl_dh = diff_qp_elastic(Q, q, G, h, xr, tr, s1r, s2r, z1r, z2r, input_grad)
 
     return (dl_dQ, dl_dq, dl_dG, dl_dh, None, None, None)
 
