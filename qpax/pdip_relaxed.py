@@ -5,12 +5,16 @@ from qpax.pdip import factorize_kkt, ort_linesearch, solve_kkt_rhs
 
 
 def pdip_newton_step(inputs):
+    """
+    Algorithm 3 Relaxing a Quadratic Program
+    """
+
     # unpack inputs
     Q, q, A, b, G, h, x, s, z, y, solver_tol, converged, pdip_iter, target_kappa = inputs
 
-    # residuals
+    # evaluate relaxed KKT conditions
     r1 = Q @ x + q + A.T @ y + G.T @ z
-    r2 = s * z - target_kappa  # we added this
+    r2 = s * z - target_kappa  # we added this (relaxed complementarity)
     r3 = G @ x + s - h
     r4 = A @ x - b
 
@@ -18,7 +22,7 @@ def pdip_newton_step(inputs):
     kkt_res = jnp.concatenate((r1, r2, r3, r4))
     converged = jnp.where(jnp.linalg.norm(kkt_res, ord=jnp.inf) < solver_tol, 1, 0)
 
-    # affine step
+    # calculate and take Newton step
     P_inv_vec, L_H, L_F = factorize_kkt(Q, G, A, s, z)
     dx, ds, dz, dy = solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4)
 

@@ -40,6 +40,11 @@ def factorize_kkt(Q, G, A, s, z):
 
 
 def solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, v1, v2, v3, v4):
+    """
+    Solve the KKT system for the residuals v1, v2, v3, v4.
+
+    Algorithm 1 PDIP Linear System Solver
+    """
     r2 = v3 - v2 / z
     p1 = v1 + G.T @ (P_inv_vec * r2)
 
@@ -73,7 +78,7 @@ def pdip_pc_step(inputs):
     # unpack inputs
     Q, q, A, b, G, h, x, s, z, y, solver_tol, converged, pdip_iter = inputs
 
-    # residuals
+    # residuals (equation 10)
     r1 = Q @ x + q + A.T @ y + G.T @ z
     r2 = s * z
     r3 = G @ x + s - h
@@ -92,7 +97,7 @@ def pdip_pc_step(inputs):
     r2 = r2 - (sigma * mu - (ds_a * dz_a))
     dx, ds, dz, dy = solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, -r1, -r2, -r3, -r4)
 
-    # linesearch and update primal & dual vars
+    # linesearch and update primal & dual vars (equation 11)
     alpha = 0.99 * jnp.min(jnp.array([ort_linesearch(s, ds), ort_linesearch(z, dz)]))
 
     x = x + alpha * dx

@@ -48,6 +48,7 @@ def initialize_elastic(Q, q, G, h, penalty):
 
 
 def solve_elastic_kkt_affine(s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
+    # Algorithm 5 Solve Elastic KKT Linear System
     # solve main KKT linear systems
     a1 = s1 / z1
     a2 = s2 / z2
@@ -72,6 +73,7 @@ def solve_elastic_kkt_affine(s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
 
 
 def solve_elastic_kkt_cc(L_H, s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
+    # Algorithm 5 Solve Elastic KKT Linear System
     # solve main KKT linear systems
     a1 = s1 / z1
     a2 = s2 / z2
@@ -95,10 +97,11 @@ def solve_elastic_kkt_cc(L_H, s1, z1, s2, z2, Q, G, r1, r2, r3, r4, r5, r6):
 
 
 def pdip_pc_step_elastic(inputs):
+    # Algorithm 4 PDIP Method for Elastic Quadratic Programs
     # unpack inputs
     Q, q, G, h, penalty, x, t, s1, s2, z1, z2, solver_tol, converged, pdip_iter = inputs
 
-    # residuals
+    # evaluate KKT conditions and check convergence
     r1 = Q @ x + q + G.T @ z2
     r2 = -z1 - z2 + penalty * jnp.ones(len(h))
     r3 = s1 * z1
@@ -110,7 +113,7 @@ def pdip_pc_step_elastic(inputs):
     kkt_res = jnp.concatenate((r1, r2, r3, r4, r5, r6))
     converged = jnp.where(jnp.linalg.norm(kkt_res, ord=jnp.inf) < solver_tol, 1, 0)
 
-    # affine step
+    # calculate affine step direction Alg. (5)
     _, _, ds1_a, ds2_a, dz1_a, dz2_a, L_H = solve_elastic_kkt_affine(s1, z1, s2, z2, Q, G, -r1, -r2, -r3, -r4, -r5, -r6)
 
     s = jnp.concatenate((s1, s2))
