@@ -25,10 +25,10 @@ To install directly from github using `pip`:
 $ pip install git+https://github.com/kevin-tracy/qpax
 ```
 
-Alternatively, to install from source:
+Alternatively, to install from source in editable mode:
 
 ```bash
-$ python setup.py install
+$ pip install -e .
 ```
 
 ## Usage
