@@ -22,7 +22,7 @@ The QP is solved with a primal-dual interior point algorithm detailed in [cvxgen
 To install directly from github using `pip`:
 
 ```bash
-$ pip install git+https://github.com/kevin-tracy/qpax
+$ pip install qpax
 ```
 
 Alternatively, to install from source in editable mode:
