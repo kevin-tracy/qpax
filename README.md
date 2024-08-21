@@ -113,3 +113,16 @@ loss_grad_jit = jax.jit(loss_grad)
 derivs = loss_grad_jit(Q, q, A, b, G, h)
 dl_dQ, dl_dq, dl_dA, dl_db, dl_dG, dl_dh = derivs 
 ```
+
+## Citation 
+[![Paper](http://img.shields.io/badge/arXiv-2207.00669-B31B1B.svg)](https://arxiv.org/abs/2406.11749)
+```
+@misc{tracy2024differentiability,
+    title={On the Differentiability of the Primal-Dual Interior-Point Method},
+    author={Kevin Tracy and Zachary Manchester},
+    year={2024},
+    eprint={2406.11749},
+    archivePrefix={arXiv},
+    primaryClass={math.OC}
+}
+```
