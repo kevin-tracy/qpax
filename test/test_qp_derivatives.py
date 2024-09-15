@@ -38,6 +38,7 @@ def test_derivs():
 
         def lambda_f(_X):
             return my_f_select(inputs, _X, i)
+
         # lambda_f = lambda _X: my_f_select(inputs, _X, i)
 
         fd_deriv = finite_difference(lambda_f, inputs[i])

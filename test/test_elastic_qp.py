@@ -7,8 +7,6 @@ import qpax
 jax.config.update("jax_enable_x64", True)
 
 
-
-
 def load_problem_data():
     d = np.load("test/problem_data_pos.npz")
     Q = jnp.array(d["Q"])

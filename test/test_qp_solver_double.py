@@ -8,7 +8,6 @@ import qpax
 jax.config.update("jax_enable_x64", True)
 
 
-
 def test_qp_solver():
     np.random.seed(1)
 

@@ -65,8 +65,10 @@ def solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, v1, v2, v3, v4):
 
 def ort_linesearch(x, dx):
     """maximum alpha <= 1 st x + alpha * dx >= 0"""
+
     def body(_x, _dx):
         return jnp.where(_dx < 0, -_x / _dx, jnp.inf)
+
     batch = jax.vmap(body, in_axes=(0, 0))
     return jnp.min(jnp.array([1.0, jnp.min(batch(x, dx))]))
 
@@ -131,6 +133,7 @@ def pdip_pc_step(inputs):
 # 11 converged
 # 12 pdip_iter
 
+
 def solve_eq_only(Q, q, A, b):
     """Solve equality constrained QP (Boyd, Convex, pg 559)."""
     Q_f = jnp.linalg.qr(Q)
@@ -149,6 +152,7 @@ def solve_eq_only(Q, q, A, b):
 
 def remove_inf_constraints(G, h):
     """Remove infinite constraints from G and h."""
+
     def body(Grow, hval):
         isinf = jnp.isinf(hval)
         new_h_val = jnp.where(isinf, 0, hval)
@@ -159,16 +163,10 @@ def remove_inf_constraints(G, h):
 
     return G, h
 
-def solve_qp(
-        Q: jax.Array,
-        q: jax.Array,
-        A: jax.Array,
-        b: jax.Array,
-        G: jax.Array,
-        h: jax.Array,
-        solver_tol: float=1e-3
-) -> Tuple[jax.Array, jax.Array, jax.Array, jax.Array, int, int]:
 
+def solve_qp(
+    Q: jax.Array, q: jax.Array, A: jax.Array, b: jax.Array, G: jax.Array, h: jax.Array, solver_tol: float = 1e-3
+) -> Tuple[jax.Array, jax.Array, jax.Array, jax.Array, int, int]:
     """Solve a QP using a primal-dual interior point method.
 
     Args:
@@ -288,7 +286,6 @@ def while_loop_debug(cond_fun, body_fun, init_val):
 
 
 def solve_qp_debug(Q, q, A, b, G, h, solver_tol=1e-3):
-
     Q = jnp.atleast_2d(Q)
     A = jnp.atleast_2d(A)
     G = jnp.atleast_2d(G)
