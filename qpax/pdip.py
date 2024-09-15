@@ -1,6 +1,7 @@
 """PDIP functions for solving QP problems."""
 
 from typing import Tuple
+
 import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
@@ -64,7 +65,8 @@ def solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, v1, v2, v3, v4):
 
 def ort_linesearch(x, dx):
     """maximum alpha <= 1 st x + alpha * dx >= 0"""
-    body = lambda _x, _dx: jnp.where(_dx < 0, -_x / _dx, jnp.inf)
+    def body(_x, _dx):
+        return jnp.where(_dx < 0, -_x / _dx, jnp.inf)
     batch = jax.vmap(body, in_axes=(0, 0))
     return jnp.min(jnp.array([1.0, jnp.min(batch(x, dx))]))
 
@@ -130,7 +132,7 @@ def pdip_pc_step(inputs):
 # 12 pdip_iter
 
 def solve_eq_only(Q, q, A, b):
-    """Solve equality constrained QP (Boyd, Convex, pg 559).""" 
+    """Solve equality constrained QP (Boyd, Convex, pg 559)."""
     Q_f = jnp.linalg.qr(Q)
 
     Qinv_At = qr_solve(Q_f, A.T)
@@ -169,10 +171,6 @@ def solve_qp(
 
     """Solve a QP using a primal-dual interior point method.
 
-    min_x   0.5 * x^T Q x + q^T x
-    st      A x = b
-            G x <= h
-    
     Args:
         Q: (n, n) positive definite matrix
         q: (n,) vector

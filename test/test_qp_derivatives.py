@@ -1,12 +1,10 @@
-import qpax
-
 import jax
 import jax.numpy as jnp
-from jax import grad
 import numpy as np
+from jax import grad
+from misc_test_utils import finite_difference, generate_random_qp
 
-from misc_test_utils import finite_difference
-from misc_test_utils import generate_random_qp
+import qpax
 
 
 @jax.jit
@@ -26,7 +24,7 @@ def test_derivs():
     np.random.seed(3)
     nx = 15
     ns = 10
-    nz = ns
+    # nz = ns
     ny = 3
     Q, q, A, b, G, h, x_true, s_true, z_true, y_true = generate_random_qp(nx, ns, ny)
 
@@ -38,7 +36,10 @@ def test_derivs():
     for i in range(6):
         print("-------------input: ", input_names[i], "----------------")
 
-        lambda_f = lambda _X: my_f_select(inputs, _X, i)
+        def lambda_f(_X):
+            return my_f_select(inputs, _X, i)
+        # lambda_f = lambda _X: my_f_select(inputs, _X, i)
+
         fd_deriv = finite_difference(lambda_f, inputs[i])
 
         assert fd_deriv.shape == derivs[i].shape

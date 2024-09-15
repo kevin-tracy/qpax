@@ -1,13 +1,12 @@
-import qpax
-
 import jax
-
-jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import numpy as np
+from misc_test_utils import check_kkt_conditions, generate_random_qp
 
-from misc_test_utils import generate_random_qp
-from misc_test_utils import check_kkt_conditions
+import qpax
+
+jax.config.update("jax_enable_x64", True)
+
 
 
 def test_qp_solver():

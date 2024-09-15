@@ -18,7 +18,6 @@ def optnet_derivatives(dz, dlam, dnu, z, lam, nu):
 
 
 def diff_qp(Q, q, A, b, G, h, z, s, lam, nu, dl_dz):
-    nz = len(q)
     ns = len(h)
     nnu = len(b)
 

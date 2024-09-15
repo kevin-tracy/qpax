@@ -1,5 +1,3 @@
-import qpax
-
 import jax
 
 # jax.config.update("jax_enable_x64", True)
@@ -11,10 +9,11 @@ import jax.numpy as jnp
 # from jax import jit
 # from jax import vmap
 import numpy as np
-# from jax import custom_vjp
 
-from misc_test_utils import generate_random_qp
-from misc_test_utils import check_kkt_conditions
+# from jax import custom_vjp
+from misc_test_utils import check_kkt_conditions, generate_random_qp
+
+import qpax
 
 
 def test_qp_solver():
@@ -23,7 +22,7 @@ def test_qp_solver():
     # test 1000 normal QP's
     nx = 15
     ns = 10
-    nz = ns
+    # nz = ns
     ny = 3
 
     jit_solve_qp = jax.jit(qpax.solve_qp)

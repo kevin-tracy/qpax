@@ -392,8 +392,8 @@ def diff_qp_elastic(Q, q, G, h, x, t, s1, s2, lam1, lam2, dl_dz):
     # augment the sizes to make them big again
     dz = jnp.concatenate((dx, dt))
     z = jnp.concatenate((x, t))
-    ds = jnp.concatenate((ds1, ds2))
-    s = jnp.concatenate((s1, s2))
+    # ds = jnp.concatenate((ds1, ds2))
+    # s = jnp.concatenate((s1, s2))
     lam = jnp.concatenate((lam1, lam2))
     dlam_tilde = jnp.concatenate((dlam1, dlam2))
 

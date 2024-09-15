@@ -1,11 +1,12 @@
-import qpax
-
 import jax
+import jax.numpy as jnp
+import numpy as np
+
+import qpax
 
 jax.config.update("jax_enable_x64", True)
 
-import jax.numpy as jnp
-import numpy as np
+
 
 
 def load_problem_data():
