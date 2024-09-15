@@ -1,13 +1,18 @@
+"""PDIP functions for solving QP problems."""
+
+from typing import Tuple
 import jax
 import jax.numpy as jnp
 import jax.scipy as jsp
 
 
 def qr_solve(qr, rhs):
+    """Solve a linear system using the QR decomposition."""
     return jsp.linalg.solve_triangular(qr[1], qr[0].T @ rhs)
 
 
 def initialize(Q, q, A, b, G, h):
+    """Initialize primal and dual variables from CVXGEN/CVXOPT."""
     H = Q + G.T @ G
     L_H = jnp.linalg.qr(H)
     F = A @ qr_solve(L_H, A.T)
@@ -30,6 +35,7 @@ def initialize(Q, q, A, b, G, h):
 
 
 def factorize_kkt(Q, G, A, s, z):
+    """Factorize the KKT system."""
     P_inv_vec = z / s
     H = Q + G.T @ (G.T * P_inv_vec).T
     L_H = jnp.linalg.qr(H)
@@ -57,14 +63,14 @@ def solve_kkt_rhs(Q, G, A, s, z, P_inv_vec, L_H, L_F, v1, v2, v3, v4):
 
 
 def ort_linesearch(x, dx):
-    # maximum alpha <= 1 st x + alpha * dx >= 0
+    """maximum alpha <= 1 st x + alpha * dx >= 0"""
     body = lambda _x, _dx: jnp.where(_dx < 0, -_x / _dx, jnp.inf)
     batch = jax.vmap(body, in_axes=(0, 0))
     return jnp.min(jnp.array([1.0, jnp.min(batch(x, dx))]))
 
 
 def centering_params(s, z, ds_a, dz_a):
-    # duality gap + cc term in predictor-corrector PDIP
+    """duality gap + cc term in predictor-corrector PDIP"""
     mu = jnp.dot(s, z) / len(s)
 
     alpha = jnp.min(jnp.array([ort_linesearch(s, ds_a), ort_linesearch(z, dz_a)]))
@@ -75,6 +81,7 @@ def centering_params(s, z, ds_a, dz_a):
 
 
 def pdip_pc_step(inputs):
+    """One step of the predictor-corrector PDIP algorithm."""
     # unpack inputs
     Q, q, A, b, G, h, x, s, z, y, solver_tol, converged, pdip_iter = inputs
 
@@ -122,8 +129,86 @@ def pdip_pc_step(inputs):
 # 11 converged
 # 12 pdip_iter
 
+def solve_eq_only(Q, q, A, b):
+    """Solve equality constrained QP (Boyd, Convex, pg 559).""" 
+    Q_f = jnp.linalg.qr(Q)
 
-def solve_qp(Q, q, A, b, G, h, solver_tol=1e-3):
+    Qinv_At = qr_solve(Q_f, A.T)
+    Qinv_g = qr_solve(Q_f, q)
+
+    S = -A @ Qinv_At
+    S_f = jnp.linalg.qr(S)
+    y = qr_solve(S_f, A @ Qinv_g + b)
+
+    x = qr_solve(Q_f, -A.T @ y - q)
+
+    return x, y
+
+
+def remove_inf_constraints(G, h):
+    """Remove infinite constraints from G and h."""
+    def body(Grow, hval):
+        isinf = jnp.isinf(hval)
+        new_h_val = jnp.where(isinf, 0, hval)
+        new_G_row = jnp.where(isinf, jnp.zeros(len(Grow)), Grow)
+        return new_G_row, new_h_val
+
+    G, h = jax.vmap(body, in_axes=(0, 0))(G, h)
+
+    return G, h
+
+def solve_qp(
+        Q: jax.Array,
+        q: jax.Array,
+        A: jax.Array,
+        b: jax.Array,
+        G: jax.Array,
+        h: jax.Array,
+        solver_tol: float=1e-3
+) -> Tuple[jax.Array, jax.Array, jax.Array, jax.Array, int, int]:
+
+    """Solve a QP using a primal-dual interior point method.
+
+    min_x   0.5 * x^T Q x + q^T x
+    st      A x = b
+            G x <= h
+    
+    Args:
+        Q: (n, n) positive definite matrix
+        q: (n,) vector
+        A: (m, n) equality constraint matrix
+        b: (m,) equality constraint vector
+        G: (p, n) inequality constraint matrix
+        h: (p,) inequality constraint vector
+
+    Returns:
+        x: (n,) optimal solution
+        s: (p,) inequality slack variables
+        z: (p,) inequality dual variables
+        y: (m,) equality dual variables
+        converged: int convergence flag
+        pdip_iter: int number of iterations
+    """
+
+    # make sure each matrix is 2D
+    Q = jnp.atleast_2d(Q)
+    A = jnp.atleast_2d(A)
+    G = jnp.atleast_2d(G)
+
+    # any inf's in constraints bound and we remove the constraint
+    G, h = remove_inf_constraints(G, h)
+
+    if (len(b) == 0) and (len(h) == 0):
+        # no constraints so we can solve directly
+        x = jnp.linalg.solve(Q, -q)
+        return x, jnp.zeros(0), jnp.zeros(0), jnp.zeros(0), 1, 0
+
+    if len(h) == 0:
+        # only equality constraints, no need for PDIP method
+        x, y = solve_eq_only(Q, q, A, b)
+
+        return x, jnp.zeros(0), jnp.zeros(0), y, 1, 0
+
     # symmetrize Q
     Q = 0.5 * (Q + Q.T)
 
@@ -205,6 +290,13 @@ def while_loop_debug(cond_fun, body_fun, init_val):
 
 
 def solve_qp_debug(Q, q, A, b, G, h, solver_tol=1e-3):
+
+    Q = jnp.atleast_2d(Q)
+    A = jnp.atleast_2d(A)
+    G = jnp.atleast_2d(G)
+
+    G, h = remove_inf_constraints(G, h)
+
     # symmetrize Q
     Q = 0.5 * (Q + Q.T)
 
