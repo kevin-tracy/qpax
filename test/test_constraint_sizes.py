@@ -135,3 +135,4 @@ def test_maros_meszaros():
 
 
     assert jnp.linalg.norm(x - jnp.array([0.7625, 0.475 ]), ord = jnp.inf) < 1e-4
+    
