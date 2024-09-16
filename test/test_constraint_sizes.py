@@ -3,7 +3,6 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-
 import qpax
 
 jax.config.update("jax_enable_x64", True)
@@ -131,3 +130,34 @@ def test_maros_meszaros():
     assert converged == 1  # Check if the solver converged
 
     assert jnp.linalg.norm(x - jnp.array([0.7625, 0.475]), ord=jnp.inf) < 1e-4
+
+
+def test_QPTEST():
+    Q = np.array([[8.0, 2.0], [2.0, 10.0]])
+    q = np.array([1.5, -2.0])
+    G = np.array([[-1.0, 2.0], [-2.0, -1.0]])
+    h = np.array([6.0, -2.0])
+    lb = np.array([0.0, 0.0])
+    ub = np.array([20.0, np.inf])
+
+    G = jnp.vstack((G, jnp.eye(2), -jnp.eye(2)))
+
+    h = jnp.concatenate((h, ub, -lb))
+
+    A = jnp.zeros((0, 2))
+    b = jnp.zeros(0)
+
+    solve_qp = jax.jit(qpax.solve_qp)
+    x, s, z, y, converged, iters = solve_qp(Q, q, A, b, G, h, solver_tol=1e-6)
+
+    # check KKT conditions
+    r1 = Q @ x + q + A.T @ y + G.T @ z  # stationarity
+    r2 = s * z
+    r3 = G @ x + s - h
+    r4 = A @ x - b
+
+    kkt_res = jnp.concatenate((r1, r2, r3, r4))
+    kkt_res = jnp.where(jnp.isnan(kkt_res), 0, kkt_res)
+    assert jnp.linalg.norm(kkt_res, ord=jnp.inf) < 1e-5
+
+    assert converged

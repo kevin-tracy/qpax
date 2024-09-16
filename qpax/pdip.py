@@ -150,18 +150,32 @@ def solve_eq_only(Q, q, A, b):
     return x, y
 
 
+# def remove_inf_constraints(G, h):
+#     """Remove infinite constraints from G and h."""
+
+#     def body(Grow, hval):
+#         isinf = jnp.isinf(hval)
+#         new_h_val = jnp.where(isinf, 0, hval)
+#         new_G_row = jnp.where(isinf, jnp.zeros(len(Grow)), Grow)
+#         return new_G_row, new_h_val
+
+#     G, h = jax.vmap(body, in_axes=(0, 0))(G, h)
+
+
+#     return G, h
 def remove_inf_constraints(G, h):
     """Remove infinite constraints from G and h."""
 
-    def body(Grow, hval):
-        isinf = jnp.isinf(hval)
-        new_h_val = jnp.where(isinf, 0, hval)
-        new_G_row = jnp.where(isinf, jnp.zeros(len(Grow)), Grow)
-        return new_G_row, new_h_val
+    # mask for infinite values in h
+    h_mask_is_inf = jnp.isinf(h)
 
-    G, h = jax.vmap(body, in_axes=(0, 0))(G, h)
+    # if h is inf, we set that element to 0
+    h2 = jnp.where(h_mask_is_inf, 0, h)
 
-    return G, h
+    # remove the rows of G corresponding to inf h values
+    G2 = jnp.diag(1 * ~h_mask_is_inf) @ G
+
+    return G2, h2, h_mask_is_inf
 
 
 def solve_qp(
@@ -191,9 +205,6 @@ def solve_qp(
     A = jnp.atleast_2d(A)
     G = jnp.atleast_2d(G)
 
-    # any inf's in constraints bound and we remove the constraint
-    G, h = remove_inf_constraints(G, h)
-
     if (len(b) == 0) and (len(h) == 0):
         # no constraints so we can solve directly
         x = jnp.linalg.solve(Q, -q)
@@ -204,6 +215,9 @@ def solve_qp(
         x, y = solve_eq_only(Q, q, A, b)
 
         return x, jnp.zeros(0), jnp.zeros(0), y, 1, 0
+
+    # any inf's in constraints bound and we remove the constraint
+    G, h, h_mask_is_inf = remove_inf_constraints(G, h)
 
     # symmetrize Q
     Q = 0.5 * (Q + Q.T)
@@ -224,6 +238,13 @@ def solve_qp(
     outputs = jax.lax.while_loop(pc_continuation_criteria, pdip_pc_step, init_inputs)
 
     x, s, z, y = outputs[6:10]
+
+    # set z to 0 where h was inf
+    z = jnp.where(h_mask_is_inf, 0, z)
+
+    # set s to inf where h was inf (this is not necessary)
+    s = jnp.where(h_mask_is_inf, jnp.inf, s)
+
     converged = outputs[11]
     pdip_iter = outputs[12]
 
@@ -286,11 +307,25 @@ def while_loop_debug(cond_fun, body_fun, init_val):
 
 
 def solve_qp_debug(Q, q, A, b, G, h, solver_tol=1e-3):
+    """Debug solving with verbose printing."""
+    # make sure each matrix is 2D
     Q = jnp.atleast_2d(Q)
     A = jnp.atleast_2d(A)
     G = jnp.atleast_2d(G)
 
-    G, h = remove_inf_constraints(G, h)
+    if (len(b) == 0) and (len(h) == 0):
+        # no constraints so we can solve directly
+        x = jnp.linalg.solve(Q, -q)
+        return x, jnp.zeros(0), jnp.zeros(0), jnp.zeros(0), 1, 0
+
+    if len(h) == 0:
+        # only equality constraints, no need for PDIP method
+        x, y = solve_eq_only(Q, q, A, b)
+
+        return x, jnp.zeros(0), jnp.zeros(0), y, 1, 0
+
+    # any inf's in constraints bound and we remove the constraint
+    G, h, h_mask_is_inf = remove_inf_constraints(G, h)
 
     # symmetrize Q
     Q = 0.5 * (Q + Q.T)
@@ -314,6 +349,11 @@ def solve_qp_debug(Q, q, A, b, G, h, solver_tol=1e-3):
     outputs = while_loop_debug(pc_continuation_criteria, pdip_pc_step_debug, init_inputs)
 
     x, s, z, y = outputs[6:10]
+    # set z to 0 where h was inf
+    z = jnp.where(h_mask_is_inf, 0, z)
+
+    # set s to inf where h was inf (this is not necessary)
+    s = jnp.where(h_mask_is_inf, jnp.inf, s)
     converged = outputs[11]
     pdip_iter = outputs[12]
 

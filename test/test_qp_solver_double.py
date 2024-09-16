@@ -14,7 +14,7 @@ def test_qp_solver():
     # test 1000 normal QP's
     nx = 15
     ns = 10
-    nz = ns
+    # nz = ns
     ny = 3
 
     jit_solve_qp = jax.jit(qpax.solve_qp)
@@ -34,7 +34,7 @@ def test_qp_solver():
     # test 1000 inequality-only QP's
     nx = 15
     ns = 10
-    nz = ns
+    # nz = ns
     ny = 0
 
     for second_test_iter in range(1000):
