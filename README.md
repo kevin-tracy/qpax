@@ -91,7 +91,7 @@ xs = batch_qp(Qs, qs, As, bs, Gs, hs)
 
 ### Differentiating a QP 
 
-Alternatively, if we are only looking to use the primal variable `x`, we can use `solve_qp_primal` which enables automatic differenation:
+Alternatively, if we are only looking to use the primal variable `x`, we can use `solve_qp_primal` which enables automatic differentiation:
 
 ```python
 import jax 
