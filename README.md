@@ -33,13 +33,31 @@ $ pip install -e .
 
 ## Usage
 
+### 🚨 Float32 Warning 🚨
+
+The solver tolerance (`solver_tol`) should be something reasonable given the available precision. With 32bit precision (the default in JAX), `solver_tol` should be greater than `1e-5`.
+
+| Precision  | Tolerance   |
+|------------|------------|
+| `jnp.float32` | `solver_tol`$\in$ `[1e-5, 1e-2]` |
+| `jnp.float64` | `solver_tol`$\in$ `[1e-12, 1e-2]`  |
+
+In order to enable 64bit precision, you can do the following at startup:
+
+```python
+# again, this only works on startup!
+import jax
+jax.config.update("jax_enable_x64", True)
+```
+This is taken from the [JAX - The Sharp Bits](https://jax.readthedocs.io/en/latest/notebooks/Common_Gotchas_in_JAX.html#double-64bit-precision).
+
 ### Solving a QP 
 We can solve QPs with qpax in a way that plays nice with JAX's `jit` and `vmap`:
 ```python 
 import qpax
 
 # solve QP (this can be combined with jit or vmap)
-x, s, z, y, converged, iters = qpax.solve_qp(Q, q, A, b, G, h)
+x, s, z, y, converged, iters = qpax.solve_qp(Q, q, A, b, G, h, solver_tol=1e-6)
 ```
 ### Solving a batch of QP's 
 
@@ -99,7 +117,7 @@ import jax.numpy as jnp
 import qpax 
 
 def loss(Q, q, A, b, G, h):
-    x = qpax.solve_qp_primal(Q, q, A, b, G, h) 
+    x = qpax.solve_qp_primal(Q, q, A, b, G, h, solver_tol=1e-4, target_kappa=1e-3) 
     x_bar = jnp.ones(len(q))
     return jnp.dot(x - x_bar, x - x_bar)
   
@@ -113,7 +131,7 @@ loss_grad_jit = jax.jit(loss_grad)
 derivs = loss_grad_jit(Q, q, A, b, G, h)
 dl_dQ, dl_dq, dl_dA, dl_db, dl_dG, dl_dh = derivs 
 ```
-
+where `target_kappa` is used to determine how much smoothing should be applied to the gradients through `solve_qp_primal`. For more detail on `target_kappa`, please refer to [the paper](https://arxiv.org/abs/2406.11749).
 ## Citation 
 [![Paper](http://img.shields.io/badge/arXiv-2207.00669-B31B1B.svg)](https://arxiv.org/abs/2406.11749)
 ```
