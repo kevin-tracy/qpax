@@ -8,6 +8,7 @@ import pytest
 import qpax
 from qpax.implicit.elastic_qp import (
     factorize_elastic_implicit_kkt,
+    relax_qp_elastic,
     solve_elastic_implicit_kkt_rhs,
 )
 
@@ -274,6 +275,69 @@ def test_implicit_elastic_f32_constraint_scaling_accuracy(n_constraints):
     assert int(converged) == 1
     assert float(jnp.linalg.norm(residual, ord=jnp.inf)) < 1e-3
     np.testing.assert_allclose(x, expected_x, rtol=5e-3, atol=3e-3)
+
+
+def _ill_conditioned_elastic_batch(batch, n, p, seed):
+    """Elastic QPs whose folded Schur complement stresses f32 Cholesky.
+
+    A large penalty puts ~penalty^2 / kappa on the Schur diagonal at active
+    constraints, driving cond(H) toward the f32 Cholesky limit ~1/(n*eps).
+    A quarter of the rows are infeasible at the seed point so the elastic
+    slack activates and both dual pairs sit near the penalty.
+    """
+    rng = np.random.default_rng(seed)
+    M = rng.normal(size=(batch, n, n))
+    Q = np.einsum("bij,bik->bjk", M, M) / n + 1e-1 * np.eye(n)[None]
+    q = rng.normal(size=(batch, n))
+    G = rng.normal(size=(batch, p, n)) * 0.5
+    x0 = rng.normal(size=(batch, n)) * 0.5
+    slack = rng.uniform(0.1, 1.0, size=(batch, p))
+    slack[:, : max(1, p // 4)] *= -1.0
+    h = np.einsum("bij,bj->bi", G, x0) + slack
+    penalty = jnp.float32(100.0)
+    to_f32 = lambda a: jnp.asarray(a, dtype=jnp.float32)  # noqa: E731
+    return to_f32(Q), to_f32(q), to_f32(G), to_f32(h), penalty
+
+
+def test_implicit_elastic_f32_ill_conditioned_batch_stays_finite():
+    """Batched f32 solve + relax must not emit NaN near the Cholesky limit.
+
+    Regression test for two f32 failure modes in the implicit elastic backend:
+
+    1. kappa collapsing below f32 epsilon under vmap
+    2. cho_factor producing NaN on an SPD-but-ill-conditioned H
+    """
+    Q, q, G, h, penalty = _ill_conditioned_elastic_batch(128, 29, 96, seed=7)
+
+    def pipeline(Qi, qi, Gi, hi):
+        out = qpax.solve_qp_elastic(
+            Qi, qi, Gi, hi, penalty, backend="i", solver_tol=1e-3, max_iter=50
+        )
+        x, t, s1, s2, z1, z2 = out[:6]
+        relaxed = relax_qp_elastic(
+            Qi,
+            qi,
+            Gi,
+            hi,
+            penalty,
+            x,
+            t,
+            s1,
+            s2,
+            z1,
+            z2,
+            solver_tol=1e-3,
+            target_kappa=1e-3,
+            max_iter=50,
+        )
+        return out[0], out[6], relaxed[0], relaxed[11]
+
+    x_fwd, conv_fwd, x_rlx, conv_rlx = jax.jit(jax.vmap(pipeline))(Q, q, G, h)
+
+    assert bool(jnp.all(jnp.isfinite(x_fwd)))
+    assert bool(jnp.all(jnp.isfinite(x_rlx)))
+    assert float(jnp.mean(conv_fwd)) >= 0.98
+    assert float(jnp.mean(conv_rlx)) >= 0.99
 
 
 def test_implicit_elastic_folded_factor_supports_backward_pass():
