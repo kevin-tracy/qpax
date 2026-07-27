@@ -295,17 +295,12 @@ point to compute gradients.
                                                    κ_relax, ∇xl; K̃)
 
         r ← (-∇xl, 0, 0, 0, 0, 0)
-        (dx, dt, ds1, ds2, dz1, dz2) ← solve_kkt(K̃, r, κ_relax)
-
-        dz_aug ← (dx, dt)
-        z_aug  ← (x,  t)
-        dλ     ← (dz1, dz2) / (z1, z2)
-        λ      ← (z1, z2)
+        (dx, dt, ds1, ds2, dẑ1, dẑ2) ← solve_kkt(K̃, r, κ_relax)
 
         ∇Ql ← (dx xᵀ + x dxᵀ) / 2
         ∇ql ← dx
-        ∇Gl ← dz2 xᵀ + z2 dxᵀ
-        ∇hl ← -z2 ⊙ dλ_2
+        ∇Gl ← dẑ2 xᵀ + z2 dxᵀ
+        ∇hl ← -dẑ2
 
         return ∇Ql, ∇ql, ∇Gl, ∇hl
 

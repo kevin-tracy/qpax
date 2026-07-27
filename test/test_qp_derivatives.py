@@ -10,6 +10,8 @@ from qpax import solve_qp_primal
 
 from .misc_test_utils import finite_difference, generate_random_qp
 
+jax.config.update("jax_enable_x64", True)
+
 
 def _make_my_f(backend):
     @functools.partial(jax.jit, static_argnames=())
@@ -59,3 +61,58 @@ def test_derivs(backend):
         print("error_norm: ", jnp.linalg.norm(derivs[i] - fd_deriv))
 
         assert jnp.linalg.norm(derivs[i] - fd_deriv) < (0.2 * jnp.linalg.norm(fd_deriv))
+
+
+@pytest.mark.parametrize("backend", ["e", "i"])
+def test_inequality_parameter_derivatives(backend):
+    rng = np.random.default_rng(0)
+    nx, ns = 4, 6
+
+    factor = rng.standard_normal((nx, nx))
+    Q = jnp.array(factor @ factor.T + np.eye(nx))
+    q = jnp.array(rng.standard_normal(nx))
+    G = rng.standard_normal((ns, nx))
+    x0 = rng.standard_normal(nx)
+    h = jnp.array(
+        G @ x0 + np.array([0.0, 0.5, -0.1, 1.0, 0.3, -0.2])
+    )
+    G = jnp.array(G)
+    A = jnp.zeros((0, nx))
+    b = jnp.zeros(0)
+
+    def loss(G_, h_):
+        x = solve_qp_primal(
+            Q,
+            q,
+            A,
+            b,
+            G_,
+            h_,
+            backend=backend,
+            # note: tolerances assume x64
+            solver_tol=1e-10,
+            target_kappa=1e-8,
+        )
+        return 0.5 * jnp.sum(x**2)
+
+    grad_G_ad, grad_h_ad = jax.grad(loss, argnums=(0, 1))(G, h)
+
+    eps = 1e-6
+    directions = jnp.eye(G.size).reshape((-1, *G.shape))
+    grad_G_fd = jax.vmap(
+        lambda direction: (
+            loss(G + eps * direction, h) - loss(G - eps * direction, h)
+        )
+        / (2 * eps)
+    )(directions).reshape(G.shape)
+
+    directions = jnp.eye(h.size)
+    grad_h_fd = jax.vmap(
+        lambda direction: (
+            loss(G, h + eps * direction) - loss(G, h - eps * direction)
+        )
+        / (2 * eps)
+    )(directions)
+
+    np.testing.assert_allclose(grad_G_ad, grad_G_fd, rtol=1e-5, atol=1e-6)
+    np.testing.assert_allclose(grad_h_ad, grad_h_fd, rtol=1e-5, atol=1e-6)

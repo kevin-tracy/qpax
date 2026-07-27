@@ -386,12 +386,12 @@ def relax_qp_elastic(
     return x_rlx, t_rlx, s1_rlx, s2_rlx, z1_rlx, z2_rlx, converged, pdip_iter
 
 
-def optnet_derivatives_elastic(dz, dlam, z, lam):
+def optnet_derivatives_elastic(dz, dlam_tilde, z, lam):
     dl_dQ = 0.5 * (jnp.outer(dz, z) + jnp.outer(z, dz))
-    dl_dG = jnp.diag(lam) @ (jnp.outer(dlam, z) + jnp.outer(lam, dz))  # TODO
+    dl_dG = jnp.outer(dlam_tilde, z) + jnp.outer(lam, dz)
 
     dl_dq = dz
-    dl_dh = -lam * dlam
+    dl_dh = -dlam_tilde
 
     return dl_dQ, dl_dq, dl_dG, dl_dh
 
@@ -410,9 +410,9 @@ def diff_qp_elastic(Q, q, G, h, x, t, s1, s2, lam1, lam2, dl_dz):
     lam = jnp.concatenate((lam1, lam2))
     dlam_tilde = jnp.concatenate((dlam1, dlam2))
 
-    dlam = dlam_tilde / lam
-
-    dl_dQ, dl_dq, dl_dG, dl_dh = optnet_derivatives_elastic(dz, dlam, z, lam)
+    dl_dQ, dl_dq, dl_dG, dl_dh = optnet_derivatives_elastic(
+        dz, dlam_tilde, z, lam
+    )
 
     dl_dQ = dl_dQ[:nz, :nz]
     dl_dq = dl_dq[:nz]

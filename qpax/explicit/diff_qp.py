@@ -5,14 +5,14 @@ from qpax.explicit.pdip import factorize_kkt, solve_kkt_rhs, solve_qp
 from qpax.explicit.pdip_relaxed import relax_qp
 
 
-def optnet_derivatives(dz, dlam, dnu, z, lam, nu):
+def optnet_derivatives(dz, dlam_tilde, dnu, z, lam, nu):
     dl_dQ = 0.5 * (jnp.outer(dz, z) + jnp.outer(z, dz))
     dl_dA = jnp.outer(dnu, z) + jnp.outer(nu, dz)
-    dl_dG = jnp.diag(lam) @ (jnp.outer(dlam, z) + jnp.outer(lam, dz))
+    dl_dG = jnp.outer(dlam_tilde, z) + jnp.outer(lam, dz)
 
     dl_dq = dz
     dl_db = -dnu
-    dl_dh = -lam * dlam
+    dl_dh = -dlam_tilde
 
     return dl_dQ, dl_dq, dl_dA, dl_db, dl_dG, dl_dh
 
@@ -38,10 +38,7 @@ def diff_qp(Q, q, A, b, G, h, z, s, lam, nu, dl_dz):
         jnp.zeros(nnu, dtype=cotangent_dtype),
     )
 
-    # recover real dlam from our modified (symmetrized) KKT system
-    dlam = dlam_tilde / lam
-
-    return optnet_derivatives(dz, dlam, dnu, z, lam, nu)
+    return optnet_derivatives(dz, dlam_tilde, dnu, z, lam, nu)
 
 
 @jax.custom_vjp
